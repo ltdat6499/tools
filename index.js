@@ -1,67 +1,104 @@
-const fs = require("fs");
-const crypto = require("crypto");
-const { V4 } = require("paseto");
-const _ = require("lodash");
-const { round } = require("lodash");
+const Koa = require("koa");
+const Router = require("koa-router");
+const bodyParser = require("koa-bodyparser");
+const bcrypt = require("bcrypt");
 
-const [algorithm, secretKey, totalBytes] = fs
-	.readFileSync("./keys/crypto.key", "utf8")
-	.split(/\r?\n/);
+const { sign, verify } = require("./keys");
 
-const encrypt = (text) => {
-	const iv = crypto.randomBytes(parseInt(totalBytes));
-	const cipher = crypto.createCipheriv(algorithm, secretKey, iv);
-	const encrypted = Buffer.concat([cipher.update(text), cipher.final()]);
-	return iv.toString("hex") + encrypted.toString("hex");
+const app = new Koa();
+const router = new Router();
+
+const user = {
+	id: 1,
+	username: "admin",
+	password: bcrypt.hashSync("123456a@", 5),
+	status: "active",
+	data: "SECRET RESOURCE",
+	refreshToken: "",
 };
 
-const decrypt = (hash) => {
-	const [iv, data] = hash.match(
-		new RegExp(`.{1,${parseInt(totalBytes) * 2}}`, "g")
-	);
+router.post("/signin", async (ctx) => {
+	// validate
+	// transform
+	// check username, password
+	// check user
+	// check available
 
-	const decipher = crypto.createDecipheriv(
-		algorithm,
-		secretKey,
-		Buffer.from(iv, "hex")
-	);
-	const decrpyted = Buffer.concat([
-		decipher.update(Buffer.from(data, "hex")),
-		decipher.final(),
-	]);
-	return decrpyted.toString();
-};
+	const accessToken = await sign(user.id);
+	const refreshToken = await sign(user.id, "refresh");
 
-const sign = async () => {
-	const secretKey = fs.readFileSync("./keys/secret.key", "utf8");
-	const data = encrypt(JSON.stringify({ id: 1 }));
-	const payload = _.chunk(data, round(data.length / 3)).reduce(
-		(prev, current, currentIndex) => ({
-			...prev,
-			[currentIndex]: current.join(""),
-		}),
-		{}
-	);
-	try {
-		return await V4.sign(payload, secretKey, {
-			expiresIn: "1 hours",
-		});
-	} catch (error) {
-		return null;
-	}
-};
+	user.refreshToken = refreshToken;
 
-const verify = async (token) => {
-	const publicKey = fs.readFileSync("./keys/public.key", "utf8");
-	const payload = await V4.verify(token, publicKey);
-	delete payload.iat;
-	delete payload.exp;
+	ctx.body = {
+		accessToken,
+		refreshToken,
+		user: {
+			id: user.id,
+			data: user.data,
+		},
+	};
+});
 
-	let hash = "";
-	for (const key in payload) {
-		hash += payload[key];
-	}
+router.post("/token", async (ctx) => {
+	// validate
+	// transform
+	const { refreshToken, username } = ctx.request.body;
+	// check username, refreshToken
+	// check user
+	// check available
+	// check invalid refresh token
+	const accessToken = await sign(user.id);
+	ctx.body = accessToken;
+});
 
-	const data = decrypt(hash);
-	return JSON.parse(data);
-};
+router.post("/token/reject", async (ctx) => {
+	// validate
+	// transform
+	const { refreshToken } = ctx.request.body;
+	// check refreshToken
+	// find user
+	user.refreshToken = "";
+	ctx.status = 204;
+});
+
+router.post("/signout", async (ctx) => {
+	// check accessToken
+	// find user
+	user.refreshToken = "";
+	ctx.status = 204;
+});
+
+// logger
+
+app.use(async (ctx, next) => {
+	await next();
+	const responseTime = ctx.response.get("X-Response-Time");
+	console.log(`${ctx.method} ${ctx.url} - ${responseTime}`);
+});
+
+// x-response-time
+
+app.use(async (ctx, next) => {
+	const start = Date.now();
+	await next();
+	const ms = Date.now() - start;
+	ctx.set("X-Response-Time", `${ms}ms`);
+});
+
+// response
+
+app.use(
+	bodyParser({
+		jsonLimit: "50mb",
+		enableTypes: ["json"],
+		extendTypes: ["application/json"],
+		onerror: (__, ctx) => {
+			ctx.throw(422, "Body parse error");
+		},
+	})
+);
+
+app.use(router.routes());
+app.use(router.allowedMethods());
+
+app.listen(3000);
