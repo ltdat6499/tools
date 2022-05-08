@@ -27,7 +27,15 @@ router.post("/signin", async (ctx) => {
 	const accessToken = await sign(user.id);
 	const refreshToken = await sign(user.id, "refresh");
 
+    // 1 device
 	user.refreshToken = refreshToken;
+    
+    /*
+    
+    multi device:
+    user.refreshToken[device] = refreshToken
+    
+    */
 
 	ctx.body = {
 		accessToken,
