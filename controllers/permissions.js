@@ -39,7 +39,7 @@ const createPermissionsByRouters = async (routers) => {
 			flatformId: flatform.id,
 			type: Permission.TYPE_SINGLE,
 		},
-		attributes: ["id", "route", "method"],
+		attributes: ["id", "route", "method", "status"],
 		raw: true,
 	});
 
@@ -48,7 +48,6 @@ const createPermissionsByRouters = async (routers) => {
 		if (left.route === right.route && left.method === right.method) return true;
 		return false;
 	};
-
 	const notExistPermissions = _.differenceWith(
 		mapRouters,
 		permissions,
@@ -66,14 +65,13 @@ const createPermissionsByRouters = async (routers) => {
 		}
 	}
 
-	// set HARD status if permissions not found in routers
-	const notFoundPermissions = _.differenceWith(
+	// set NOT FOUND status if permissions not found in routers
+	const extinctPermissions = _.differenceWith(
 		permissions,
 		mapRouters,
 		comparePermission
 	);
-
-	if (notFoundPermissions.length) {
+	if (extinctPermissions.length) {
 		try {
 			await Permission.update(
 				{ status: Permission.STATUS_NOT_FOUND },
@@ -81,7 +79,36 @@ const createPermissionsByRouters = async (routers) => {
 					transaction,
 					where: {
 						id: {
-							[Op.in]: notFoundPermissions.map((item) => item.id),
+							[Op.in]: extinctPermissions.map((item) => item.id),
+						},
+					},
+				}
+			);
+		} catch (error) {
+			console.log(error);
+			await transaction.rollback();
+			return;
+		}
+	}
+
+	// set ACTIVE status if permissions found when db set as NOT FOUND status
+	const notFoundStatusPermissions = permissions.filter(
+		(item) => item.status === Permission.STATUS_NOT_FOUND
+	);
+	if (notFoundStatusPermissions.length) {
+		const reactivePermissions = notFoundStatusPermissions.filter((item) =>
+			mapRouters.some(
+				(mapper) => mapper.route === item.route && mapper.method === item.method
+			)
+		);
+		try {
+			await Permission.update(
+				{ status: Permission.STATUS_ACTIVE },
+				{
+					transaction,
+					where: {
+						id: {
+							[Op.in]: reactivePermissions.map((item) => item.id),
 						},
 					},
 				}
