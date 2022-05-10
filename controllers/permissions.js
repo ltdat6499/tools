@@ -1,6 +1,6 @@
 const { Op } = require("sequelize");
 const _ = require("lodash");
-const { Permission, Flatform, transaction } = require("../databases");
+const { Permission, Flatform, createTransaction } = require("../databases");
 
 const createPermissionsByRouters = async (routers) => {
 	// get flatform by env
@@ -28,6 +28,7 @@ const createPermissionsByRouters = async (routers) => {
 				).mapper,
 				status: Permission.STATUS_ACTIVE,
 				type: Permission.TYPE_SINGLE,
+				flatformId: flatform.id,
 			})),
 		];
 	}
@@ -43,7 +44,6 @@ const createPermissionsByRouters = async (routers) => {
 	});
 
 	// create permissions if not exist
-
 	const comparePermission = (left, right) => {
 		if (left.route === right.route && left.method === right.method) return true;
 		return false;
@@ -55,7 +55,7 @@ const createPermissionsByRouters = async (routers) => {
 		comparePermission
 	);
 
-	const transaction = await transaction();
+	const transaction = await createTransaction();
 	if (notExistPermissions.length) {
 		try {
 			await Permission.bulkCreate(notExistPermissions, { transaction });
@@ -92,6 +92,8 @@ const createPermissionsByRouters = async (routers) => {
 			return;
 		}
 	}
+
+	await transaction.commit();
 };
 
 module.exports = { createPermissionsByRouters };

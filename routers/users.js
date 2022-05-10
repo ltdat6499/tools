@@ -4,7 +4,7 @@ const { User } = require("../databases");
 
 const router = new Router();
 
-router.get("/v1/users", async (ctx) => {});
+// router.get("/v1/users", async (ctx) => {});
 
 router.get("/v1/users/:id", async (ctx) => {});
 

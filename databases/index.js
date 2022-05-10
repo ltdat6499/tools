@@ -33,7 +33,7 @@ sequelize
 	});
 
 const db = {
-	transaction: () => sequelize.transaction(),
+	createTransaction: () => sequelize.transaction(),
 };
 
 fs.readdirSync(path.join(__dirname, "models"))
