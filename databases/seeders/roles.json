@@ -1,0 +1,12 @@
+[
+	{
+		"id": 1,
+		"name": "admin",
+		"flatformId": 1
+	},
+	{
+		"id": 2,
+		"name": "user",
+		"flatformId": 1
+	}
+]

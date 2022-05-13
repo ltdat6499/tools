@@ -42,6 +42,7 @@ module.exports = (sequelize, DataTypes) => {
 			},
 			status: {
 				type: DataTypes.INTEGER,
+				defaultValue: Flatform.STATUS_ACTIVE,
 			},
 		},
 		{

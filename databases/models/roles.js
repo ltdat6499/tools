@@ -52,11 +52,9 @@ module.exports = (sequelize, DataTypes) => {
 			},
 			status: {
 				type: DataTypes.INTEGER,
+                defaultValue: Role.STATUS_ACTIVE
 			},
 			type: {
-				type: DataTypes.INTEGER,
-			},
-			status: {
 				type: DataTypes.INTEGER,
 			},
 		},

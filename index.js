@@ -21,9 +21,9 @@ app
 			headerKey: "Bearer",
 		})
 	)
-	.use(routers);
+	.use(routers());
 
-app.listen(process.env.APP_PORT, process.env.APP_HOST, () => {
+app.listen(parseInt(process.env.APP_PORT), process.env.APP_HOST, () => {
 	console.info(
 		`API Server started at: http://%s:%d`,
 		process.env.APP_HOST,

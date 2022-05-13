@@ -19,6 +19,14 @@ fs.readdirSync(__dirname)
 		routers.push(require(path.join(__dirname, file)));
 	});
 
+for (const group of routers) {
+	for (const router of group.stack) {
+		router.stack.unshift(async (ctx, next) => {
+			
+			await next();
+		});
+	}
+}
 createPermissionsByRouters(routers);
 
 module.exports = combineRouters(routers);

@@ -1,7 +1,7 @@
 const fs = require("fs");
 const path = require("path");
 const { Sequelize, DataTypes } = require("sequelize");
-// const seeders = require("../seeders");
+const seeders = require("./seeders");
 
 const sequelize = new Sequelize(
 	process.env.DB_NAME,
@@ -33,6 +33,8 @@ sequelize
 	});
 
 const db = {
+	Sequelize,
+	sequelize,
 	createTransaction: () => sequelize.transaction(),
 };
 
@@ -63,18 +65,23 @@ for (const key in db) {
 
 // run seed
 // (async () => {
-// 	if (seeders && DB.SEEDING) {
+// 	if (seeders && Boolean(process.env.DB_SEEDING)) {
 // 		let seeds = [
 // 			{
-// 				key: "locations",
-// 				model: "Location",
+// 				key: "roles",
+// 				model: "Role",
+// 			},
+// 			{
+// 				key: "flatforms",
+// 				model: "Flatform",
 // 			},
 // 		];
 // 		seeds = seeds.filter((item) => Object.keys(seeders).includes(item.key));
 
-// 		const transaction = await db.transaction();
+// 		const transaction = await db.createTransaction();
 // 		try {
 // 			for (const item of seeds) {
+//                 console.log(item);
 // 				await db[item.model].destroy({
 // 					truncate: true,
 // 					transaction,
