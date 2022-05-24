@@ -4,13 +4,17 @@ const moment = require("moment");
 const axios = require("axios");
 const { round } = require("lodash");
 
-const url = "http://localhost:4000";
+const url = "https://lubrytics.com:8443/poca-admin-panel-api";
 
 const token =
-	"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTgsImlhdCI6MTY1MzMwMDMxMiwiZXhwIjoxNjUzOTA1MTEyfQ.bBpIRqHwfU-ywocVpMwENUrS18uS0PHDzn94lIEqlkuHV2L9nHl2oOuHcPWC3vCUjGLi_fwTz7kPPQ7PTAlrTw";
+	"eyJhbGciOiJFUzI1NiIsInR5cCI6IkpXVCJ9.eyJpZCI6MTgsImlhdCI6MTY1MzM1Nzc5MiwiZXhwIjoxNjUzOTYyNTkyfQ.tzO1OWlM5HIUmM1VuymJLbQRAkRLVMv_H7RoADTE-W_66LpPvnhlQZmLsSSfuq2Mbc-iRq5XgNso1JSablwekA";
 
 axios.defaults.headers.common = {
 	Authorization: "Bearer " + token,
+};
+
+const sleep = async (ms) => {
+	return new Promise((resolve) => setTimeout(resolve, ms));
 };
 
 class Queue {
@@ -45,6 +49,7 @@ class Queue {
 }
 
 const queue = new Queue();
+let readAll = false;
 let startedAt = moment();
 (() => {
 	fs.createReadStream("./codes.txt")
@@ -60,26 +65,65 @@ let startedAt = moment();
 		.on("end", function () {
 			console.log("Read entirefile.");
 			console.timeEnd("READ");
+			readAll = true;
 		});
 })();
 
 setInterval(async () => {
-	if (!queue.isEmpty()) {
-		let input = queue.dequeueByLength(1);
+	if (!queue.isEmpty() && !queue.lock) {
+		queue.lock = true;
+		let input = queue.dequeueByLength(300);
+		queue.lock = false;
 		try {
-			axios.post(url + "/v2/import-code", {
-				// codes: input.map((item) => ({
-				// 	// season_id: 12,
-				// 	// product_id: 1,
-				// 	// codes: item,
-				// 	// quantity: 1,
-				// })),
-                codes: input.map((item) => item)
+			await axios.post(url + "/v1/import-code", {
+				codes: input.map((item) => ({
+					season_id: 12,
+					product_id: 1,
+					code: item,
+					quantity: 1,
+				})),
 			});
 		} catch (error) {
 			fs.appendFileSync("./errors.txt", `${input}\n`);
+			queue.enqueue(...input);
+			console.log("ERROR, RE-ENQUEUE");
+
+			// queue.lock = true;
+			// console.log("SLEEPING FOR 1 MINUTE");
+			// await sleep(60000);
+			// queue.lock = false;
 		}
 		delete input;
 		console.log(round(moment().diff(startedAt) / 1000, 2));
+	}
+}, 1);
+
+// setInterval(async () => {
+// 	if (!queue.isEmpty() && !queue.lock) {
+// 		queue.lock = true;
+// 		let input = queue.dequeueByLength(3000);
+// 		try {
+// 			await axios.post(url + "/v1/import-code", {
+// 				codes: input.map((item) => ({
+// 					season_id: 12,
+// 					product_id: 1,
+// 					code: item,
+// 					quantity: 1,
+// 				})),
+// 			});
+// 		} catch (error) {
+// 			fs.appendFileSync("./errors.txt", `${input}\n`);
+// 			queue.enqueue(...input);
+// 			console.log("ERROR, RE-ENQUEUE");
+// 		}
+// 		queue.lock = false;
+// 		delete input;
+// 		console.log(round(moment().diff(startedAt) / 1000, 2));
+// 	}
+// }, 1000);
+
+setInterval(() => {
+	if (readAll && queue.isEmpty()) {
+		console.log("DONE");
 	}
 }, 1000);
